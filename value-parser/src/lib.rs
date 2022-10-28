@@ -177,9 +177,9 @@ mod tests {
         val
     }
 
-    fn check_parser(text: &str, expect_value: Value) -> bool {
+    fn check_parser(text: &str, expect_value: Value) {
         let parsed_value = parse_value_completely(text);
-        expect_value == parsed_value
+        assert_eq!(parsed_value, expect_value);
     }
 
     impl<'a> From<&'a str> for Value {
@@ -387,54 +387,52 @@ mod tests {
 
     #[test]
     fn map_string_vec() {
-        assert!(check_parser(
+        check_parser(
             r#"{["1"] = {1, 2},  ["5"] = {5, 6}}"#,
             val!({
                 "1" => [1., 2.],
                 "5" => [5., 6.]
-            })
-        ))
+            }),
+        )
     }
 
     #[test]
     fn map_nested() {
-        assert!(check_parser(
+        check_parser(
             r#"{["1"] = {[1] = 2},  ["5"] = {[3] = 4}}"#,
             val!({
                 "1" => { 1. => 2. },
                 "5" => { 3. => 4. }
-            })
-        ))
+            }),
+        )
     }
 
     #[test]
     fn map_with_list_keys() {
-        assert!(check_parser(
+        check_parser(
             r#"{[{1, 2}] = 1,  [{3, 4}] = {[3] = 4}}"#,
             val!({
                 [1., 2.] => 1.,
                 [3., 4.] => { 3. => 4. }
-            })
-        ))
+            }),
+        )
     }
 
     #[test]
     fn list_of_map() {
-        assert!(check_parser(
+        check_parser(
             r#"{{[1] = 2}, {[3] = 4, [5] = 6}}"#,
             val!([
                 {1. => 2.},
                 {3. => 4., 5. => 6.}
-            ])
-        ))
+            ]),
+        )
+    }
     }
 
     #[test]
     fn reference_number() {
-        assert!(check_parser(
-            r#"@0x7fffffffde44: 1"#,
-            val!(1.)
-        ))
+        check_parser(r#"@0x7fffffffde44: 1"#, val!(1.))
     }
 
     #[test]
