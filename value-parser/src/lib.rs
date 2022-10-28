@@ -17,20 +17,15 @@ impl<'a> Parser<'a> {
     }
 
     pub fn at_eof(&self) -> bool {
-        self.pos == self.src.len()
+        self.pos >= self.src.len()
     }
 
     pub fn at(&self, tok: &str) -> bool {
         &self.src[self.pos..self.pos + tok.len()] == tok
     }
 
-    pub fn goto(&mut self, pos: usize) -> bool {
-        if pos < self.src.len() {
-            self.pos = pos;
-            true
-        } else {
-            false
-        }
+    pub fn goto(&mut self, pos: usize) {
+        self.pos = pos;
     }
 
     pub fn eat(&mut self, tok: &str) -> bool {
