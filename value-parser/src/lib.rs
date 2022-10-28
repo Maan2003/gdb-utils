@@ -5,6 +5,7 @@ pub struct Parser<'a> {
 
 #[derive(Debug, PartialEq)]
 pub enum Value {
+    Bool(bool),
     Number(f64),
     String(String),
     Map(Vec<(Value, Value)>),
@@ -146,6 +147,10 @@ impl<'a> Parser<'a> {
             Value::String(self.parse_string())
         } else if self.current().is_ascii_digit() {
             Value::Number(self.parse_number())
+        } else if self.eat("true") {
+            Value::Bool(true)
+        } else if self.eat("false") {
+            Value::Bool(false)
         } else {
             panic!("expected a value");
         }
@@ -180,6 +185,12 @@ mod tests {
         }
     }
 
+    impl From<bool> for Value {
+        fn from(b: bool) -> Self {
+            Self::Bool(b)
+        }
+    }
+
     macro_rules! val {
         ({
             $($k:tt => $v:tt),*
@@ -192,6 +203,12 @@ mod tests {
         ($s:literal) => {
             Value::from($s)
         }
+    }
+
+    #[test]
+    fn bool() {
+        assert!(check_parser("true", val!(true)));
+        assert!(check_parser("false", val!(false)));
     }
 
     #[test]
