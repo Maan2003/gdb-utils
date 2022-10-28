@@ -145,8 +145,10 @@ impl<'a> Parser<'a> {
             self.parse_list_or_map()
         } else if self.eat("\"") {
             Value::String(self.parse_string())
-        } else {
+        } else if self.current().is_ascii_digit() {
             Value::Number(self.parse_number())
+        } else {
+            panic!("expected a value");
         }
     }
 }
