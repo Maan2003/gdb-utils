@@ -139,6 +139,12 @@ impl<'a> Parser<'a> {
         self.src[start..self.pos].parse().unwrap()
     }
 
+    pub fn remove_reference(&mut self) {
+        while !self.at_eof() && !self.eat(":") {
+            self.advance()
+        }
+    }
+
     pub fn parse_value(&mut self) -> Value {
         self.eat_ws();
         if self.eat("{") {
@@ -151,6 +157,9 @@ impl<'a> Parser<'a> {
             Value::Bool(true)
         } else if self.eat("false") {
             Value::Bool(false)
+        } else if self.eat("@0x") {
+            self.remove_reference();
+            self.parse_value()
         } else {
             panic!("expected a value");
         }
@@ -367,10 +376,7 @@ mod tests {
 
     #[test]
     fn empty_curlies_is_list() {
-        assert!(check_parser(
-            r#"{}"#,
-            val!([])
-        ))
+        assert!(check_parser(r#"{}"#, val!([])))
     }
 
     #[test]
@@ -421,5 +427,21 @@ mod tests {
                 {3. => 4., 5. => 6.}
             ])
         ))
+    }
+
+    #[test]
+    fn reference_number() {
+        assert!(check_parser(
+            r#"@0x7fffffffde44: 1"#,
+            val!(1.)
+        ))
+    }
+
+    #[test]
+    fn reference_remove() {
+        let mut p = Parser::new("@0x83fd: foobar_random_stuff");
+        p.remove_reference();
+        assert!(p.pos == 8);
+        assert!(p.current() == ' ');
     }
 }
