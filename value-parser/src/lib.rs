@@ -21,7 +21,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn at(&self, tok: &str) -> bool {
-        &self.src[self.pos..self.pos + tok.len()] == tok
+        self.pos + tok.len() <= self.src.len() && &self.src[self.pos..self.pos + tok.len()] == tok
     }
 
     pub fn goto(&mut self, pos: usize) {
@@ -121,8 +121,7 @@ impl<'a> Parser<'a> {
                 s.push(self.eat_current());
             }
         }
-        assert!(!self.at_eof(), "missing closing \"");
-        self.eat("\"");
+        assert!(self.eat("\""), "missing closing \"");
         s
     }
 
