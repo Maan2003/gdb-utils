@@ -57,6 +57,14 @@ impl<'a> Parser<'a> {
         curr
     }
 
+    pub fn parse_ident(&mut self) -> String {
+        let start = self.pos;
+        while self.current().is_ascii_alphanumeric() {
+            self.advance();
+        }
+        self.src[start..self.pos].to_owned()
+    }
+
     pub fn parse_list_or_map(&mut self) -> Value {
         let mut first = true;
         let mut list = Vec::new();
@@ -86,7 +94,14 @@ impl<'a> Parser<'a> {
             } else {
                 assert!(!is_map, "can't mix list and map");
             }
-            if is_map {
+            if self.current().is_ascii_alphabetic() {
+                is_map = true;
+                let k = Value::String(self.parse_ident());
+                self.eat_ws();
+                assert!(self.eat("="), "expected a = after field");
+                let v = self.parse_value();
+                map.push((k, v));
+            } else if is_map {
                 let k = self.parse_value();
                 self.eat_ws();
                 assert!(self.eat("]"), "expected a ]");
@@ -216,18 +231,18 @@ mod tests {
 
     #[test]
     fn bool() {
-        assert!(check_parser("true", val!(true)));
-        assert!(check_parser("false", val!(false)));
+        check_parser("true", val!(true));
+        check_parser("false", val!(false));
     }
 
     #[test]
     fn number() {
-        assert!(check_parser("1", val!(1.)));
+        check_parser("1", val!(1.));
     }
 
     #[test]
     fn decimal() {
-        assert!(check_parser("1.25", val!(1.25)));
+        check_parser("1.25", val!(1.25));
     }
 
     #[test]
@@ -244,12 +259,12 @@ mod tests {
 
     #[test]
     fn simple_string() {
-        assert!(check_parser(r#""hello""#, val!("hello"),))
+        check_parser(r#""hello""#, val!("hello"))
     }
 
     #[test]
     fn string_escape() {
-        assert!(check_parser(r#""\n\t\r\n""#, val!("\n\t\r\n"),))
+        check_parser(r#""\n\t\r\n""#, val!("\n\t\r\n"))
     }
 
     #[test]
@@ -266,44 +281,44 @@ mod tests {
 
     #[test]
     fn empty_list() {
-        assert!(check_parser(r#"{}"#, val!([])))
+        check_parser(r#"{}"#, val!([]))
     }
 
     #[test]
     fn list_of_numbers() {
-        assert!(check_parser(
+        check_parser(
             r#"{1  , 2, 5,4,  3,2,3}"#,
-            val!([1., 2., 5., 4., 3., 2., 3.])
-        ))
+            val!([1., 2., 5., 4., 3., 2., 3.]),
+        )
     }
     #[test]
     fn list_single_string() {
-        assert!(check_parser(r#"{"abc"}"#, val!(["abc"])))
+        check_parser(r#"{"abc"}"#, val!(["abc"]))
     }
 
     #[test]
     fn list_of_string() {
-        assert!(check_parser(
+        check_parser(
             r#"{"abc"   , "cd", "e", "f"}"#,
-            val!(["abc", "cd", "e", "f"])
-        ))
+            val!(["abc", "cd", "e", "f"]),
+        )
     }
     #[test]
     fn list_of_lists() {
-        assert!(check_parser(r#"{{}, {}, {}}"#, val!([[], [], []])))
+        check_parser(r#"{{}, {}, {}}"#, val!([[], [], []]))
     }
 
     #[test]
     fn list_hetero() {
-        assert!(check_parser(
+        check_parser(
             r#"{{        }, 1       ,     "xyz",       {  1, "bb"} , 2.5 }"#,
-            val!([[], 1., "xyz", [1., "bb"], 2.5])
-        ))
+            val!([[], 1., "xyz", [1., "bb"], 2.5]),
+        )
     }
 
     #[test]
     fn list_with_trailing_comma() {
-        assert!(check_parser(r#"{5,}"#, val!([5.])))
+        check_parser(r#"{5,}"#, val!([5.]))
     }
 
     #[test]
@@ -326,34 +341,34 @@ mod tests {
 
     #[test]
     fn map_simple() {
-        assert!(check_parser(
+        check_parser(
             "{\n   [1] = 2,  [2] = 4,\n}",
             val!({
                 1. => 2.,
                 2. => 4.
-            })
-        ))
+            }),
+        )
     }
 
     #[test]
     fn map_single_key() {
-        assert!(check_parser(
+        check_parser(
             "{[1] = 2}",
             val!({
                 1. => 2.
-            })
-        ))
+            }),
+        )
     }
 
     #[test]
     fn map_string() {
-        assert!(check_parser(
+        check_parser(
             r#"{["1"] = "8",  ["5"] = "2"}"#,
             val!({
                 "1" => "8",
                 "5" => "2"
-            })
-        ))
+            }),
+        )
     }
 
     #[test]
@@ -376,7 +391,7 @@ mod tests {
 
     #[test]
     fn empty_curlies_is_list() {
-        assert!(check_parser(r#"{}"#, val!([])))
+        check_parser(r#"{}"#, val!([]))
     }
 
     #[test]
@@ -428,6 +443,26 @@ mod tests {
             ]),
         )
     }
+
+    #[test]
+    fn structure() {
+        check_parser(r#"{ x = 5 }"#, val!({"x" => 5.}))
+    }
+
+    #[test]
+    fn structure_field_numbers() {
+        check_parser(r#"{ x5xe = 5 }"#, val!({"x5xe" => 5.}))
+    }
+
+    #[test]
+    fn mix_struct_and_map() {
+        check_parser(r#"{ x5xe = 5, [3] = 2 }"#, val!({"x5xe" => 5., 3. => 2. }))
+    }
+
+    #[test]
+    #[should_panic(expected = "can't mix list and map")]
+    fn mix_struct_and_list() {
+        parse_value_completely("{x = 2, 5}");
     }
 
     #[test]
