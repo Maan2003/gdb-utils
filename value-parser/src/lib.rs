@@ -65,12 +65,13 @@ impl<'a> Parser<'a> {
             self.eat_ws();
             let has_comma = self.eat(",");
             self.eat_ws();
+            if first {
+                assert!(!has_comma, ", not allowed before first item")
+            }
             if self.eat("}") {
                 break;
             }
-            if first {
-                assert!(!has_comma, ", not allowed before first item")
-            } else {
+            if !first {
                 assert!(has_comma, "expected , after list item");
             }
 
