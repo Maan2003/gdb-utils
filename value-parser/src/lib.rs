@@ -79,9 +79,11 @@ impl<'a> Parser<'a> {
             if self.eat("[") {
                 if first {
                     is_map = true;
-                } else if !is_map {
-                    unimplemented!("can't mix list and map")
+                } else {
+                    assert!(is_map, "can't mix list and map");
                 }
+            } else {
+                assert!(!is_map, "can't mix list and map");
             }
             if is_map {
                 let k = self.parse_value();
