@@ -157,11 +157,18 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
 
-    fn check_parser(text: &str, expect_value: Value) -> bool {
+    fn parse_value_completely(text: &str) -> Value {
         let mut p = Parser::new(text);
-        let parsed_value = p.parse_value();
+        let val = p.parse_value();
+        assert!(p.at_eof(), "parser didn't parse complete input");
+        val
+    }
+
+    fn check_parser(text: &str, expect_value: Value) -> bool {
+        let parsed_value = parse_value_completely(text);
         expect_value == parsed_value
     }
+
     impl<'a> From<&'a str> for Value {
         fn from(v: &'a str) -> Self {
             Self::String(v.to_owned())
@@ -187,48 +194,82 @@ mod tests {
             Value::from($s)
         }
     }
+
     #[test]
-    fn parse_number() {
+    fn number() {
         assert!(check_parser("1", val!(1.)));
     }
 
     #[test]
-    fn parse_simple_string() {
+    fn decimal() {
+        assert!(check_parser("1.25", val!(1.25)));
+    }
+
+    #[test]
+    #[should_panic]
+    fn no_double_together_decimals() {
+        parse_value_completely("1..5");
+    }
+
+    #[test]
+    #[should_panic]
+    fn no_double_decimals() {
+        parse_value_completely("1.5.2");
+    }
+
+    #[test]
+    fn simple_string() {
         assert!(check_parser(r#""hello""#, val!("hello"),))
     }
 
     #[test]
-    fn parse_string_escape() {
+    fn string_escape() {
         assert!(check_parser(r#""\n\t\r\n""#, val!("\n\t\r\n"),))
     }
 
     #[test]
-    fn parse_empty_list() {
+    #[should_panic(expected = "unknown escape")]
+    fn string_unending_escape() {
+        parse_value_completely(r#""\"#);
+    }
+
+    #[test]
+    #[should_panic(expected = "missing closing \"")]
+    fn string_unclosed() {
+        parse_value_completely("\"hello");
+    }
+
+    #[test]
+    fn empty_list() {
         assert!(check_parser(r#"{}"#, val!([])))
     }
 
     #[test]
-    fn parse_list_of_numbers() {
+    fn list_of_numbers() {
         assert!(check_parser(
             r#"{1  , 2, 5,4,  3,2,3}"#,
             val!([1., 2., 5., 4., 3., 2., 3.])
         ))
     }
+    #[test]
+    fn list_single_string() {
+        assert!(check_parser(r#"{"abc"}"#, val!(["abc"])))
+    }
 
     #[test]
-    fn parse_list_of_string() {
+    fn list_of_string() {
         assert!(check_parser(
             r#"{"abc"   , "cd", "e", "f"}"#,
             val!(["abc", "cd", "e", "f"])
         ))
     }
     #[test]
-    fn parse_list_of_lists() {
+    fn list_of_lists() {
         assert!(check_parser(r#"{{}, {}, {}}"#, val!([[], [], []])))
     }
 
     #[test]
-    fn parse_list_hetero() {
+    fn list_hetero() {
         assert!(check_parser(
             r#"{{        }, 1       ,     "xyz",       {  1, "bb"} , 2.5 }"#,
             val!([[], 1., "xyz", [1., "bb"], 2.5])
@@ -236,13 +277,133 @@ mod tests {
     }
 
     #[test]
-    fn parse_map() {
+    fn list_with_trailing_comma() {
+        assert!(check_parser(r#"{5,}"#, val!([5.])))
+    }
+
+    #[test]
+    #[should_panic(expected = ", not allowed before first item")]
+    fn list_with_leading_comma_and_element() {
+        parse_value_completely(r#"{,5}"#);
+    }
+
+    #[test]
+    #[should_panic(expected = ", not allowed before first item")]
+    fn list_first_comma_not_allowed() {
+        parse_value_completely(r#"{,}"#);
+    }
+
+    #[test]
+    #[should_panic(expected = ", not allowed before first item")]
+    fn map_first_comma_not_allowed() {
+        parse_value_completely(r#"{,[5] => 2}"#);
+    }
+
+    #[test]
+    fn map_simple() {
         assert!(check_parser(
             "{\n   [1] = 2,  [2] = 4,\n}",
             val!({
                 1. => 2.,
                 2. => 4.
             })
+        ))
+    }
+
+    #[test]
+    fn map_single_key() {
+        assert!(check_parser(
+            "{[1] = 2}",
+            val!({
+                1. => 2.
+            })
+        ))
+    }
+
+    #[test]
+    fn map_string() {
+        assert!(check_parser(
+            r#"{["1"] = "8",  ["5"] = "2"}"#,
+            val!({
+                "1" => "8",
+                "5" => "2"
+            })
+        ))
+    }
+
+    #[test]
+    #[should_panic(expected = "expected a value")]
+    fn map_no_value() {
+        parse_value_completely("{[1] =}");
+    }
+
+    #[test]
+    #[should_panic(expected = "expected a ]")]
+    fn map_unbalance_bracket() {
+        parse_value_completely("{[1 =}");
+    }
+
+    #[test]
+    #[should_panic(expected = "expected a =")]
+    fn map_missing_eq() {
+        parse_value_completely("{[1] 1}");
+    }
+
+    #[test]
+    fn empty_curlies_is_list() {
+        assert!(check_parser(
+            r#"{}"#,
+            val!([])
+        ))
+    }
+
+    #[test]
+    #[should_panic(expected = "can't mix list and map")]
+    fn mix_list_and_map() {
+        parse_value_completely("{[5] = 2, 5}");
+    }
+
+    #[test]
+    fn map_string_vec() {
+        assert!(check_parser(
+            r#"{["1"] = {1, 2},  ["5"] = {5, 6}}"#,
+            val!({
+                "1" => [1., 2.],
+                "5" => [5., 6.]
+            })
+        ))
+    }
+
+    #[test]
+    fn map_nested() {
+        assert!(check_parser(
+            r#"{["1"] = {[1] = 2},  ["5"] = {[3] = 4}}"#,
+            val!({
+                "1" => { 1. => 2. },
+                "5" => { 3. => 4. }
+            })
+        ))
+    }
+
+    #[test]
+    fn map_with_list_keys() {
+        assert!(check_parser(
+            r#"{[{1, 2}] = 1,  [{3, 4}] = {[3] = 4}}"#,
+            val!({
+                [1., 2.] => 1.,
+                [3., 4.] => { 3. => 4. }
+            })
+        ))
+    }
+
+    #[test]
+    fn list_of_map() {
+        assert!(check_parser(
+            r#"{{[1] = 2}, {[3] = 4, [5] = 6}}"#,
+            val!([
+                {1. => 2.},
+                {3. => 4., 5. => 6.}
+            ])
         ))
     }
 }
