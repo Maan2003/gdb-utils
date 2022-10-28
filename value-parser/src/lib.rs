@@ -121,7 +121,8 @@ impl<'a> Parser<'a> {
                 s.push(self.eat_current());
             }
         }
-        assert!(self.eat("\""));
+        assert!(!self.at_eof(), "missing closing \"");
+        self.eat("\"");
         s
     }
 
