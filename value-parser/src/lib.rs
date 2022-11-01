@@ -224,6 +224,45 @@ impl<'a> Parser<'a> {
     }
 }
 
+impl<'a> From<&'a str> for Value {
+    fn from(v: &'a str) -> Self {
+        Self::String(v.to_owned())
+    }
+}
+
+impl From<f64> for Value {
+    fn from(n: f64) -> Self {
+        Self::Number(n)
+    }
+}
+
+impl From<i32> for Value {
+    fn from(n: i32) -> Self {
+        Self::Number(n as f64)
+    }
+}
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Self::Bool(b)
+    }
+}
+
+#[macro_export]
+macro_rules! value {
+    ({
+        $($k:tt => $v:tt),*
+    }) => {
+        Value::Map(vec![$(($crate::value!($k), $crate::value!($v))),*])
+    };
+    ([$($va:tt),*]) => {{
+        Value::List(vec![$($crate::value!($va)),*])
+    }};
+    ($s:literal) => {
+        Value::from($s)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -240,52 +279,25 @@ mod tests {
         assert_eq!(parsed_value, expect_value);
     }
 
-    impl<'a> From<&'a str> for Value {
-        fn from(v: &'a str) -> Self {
-            Self::String(v.to_owned())
-        }
-    }
-
-    impl From<f64> for Value {
-        fn from(n: f64) -> Self {
-            Self::Number(n)
-        }
-    }
-
-    impl From<bool> for Value {
-        fn from(b: bool) -> Self {
-            Self::Bool(b)
-        }
-    }
-
-    macro_rules! val {
-        ({
-            $($k:tt => $v:tt),*
-        }) => {
-            Value::Map(vec![$((val!($k), val!($v))),*])
-        };
-        ([$($va:tt),*]) => {{
-            Value::List(vec![$(val!($va)),*])
-        }};
-        ($s:literal) => {
-            Value::from($s)
-        }
-    }
-
     #[test]
     fn bool() {
-        check_parser("true", val!(true));
-        check_parser("false", val!(false));
+        check_parser("true", value!(true));
+        check_parser("false", value!(false));
     }
 
     #[test]
     fn number() {
-        check_parser("1", val!(1.));
+        check_parser("1", value!(1.));
+    }
+
+    #[test]
+    fn negative_number() {
+        check_parser("-1", value!(-1.));
     }
 
     #[test]
     fn decimal() {
-        check_parser("1.25", val!(1.25));
+        check_parser("1.25", value!(1.25));
     }
 
     #[test]
@@ -302,12 +314,12 @@ mod tests {
 
     #[test]
     fn simple_string() {
-        check_parser(r#""hello""#, val!("hello"))
+        check_parser(r#""hello""#, value!("hello"))
     }
 
     #[test]
     fn string_escape() {
-        check_parser(r#""\n\t\r\n""#, val!("\n\t\r\n"))
+        check_parser(r#""\n\t\r\n""#, value!("\n\t\r\n"))
     }
 
     #[test]
@@ -324,44 +336,44 @@ mod tests {
 
     #[test]
     fn empty_list() {
-        check_parser(r#"{}"#, val!([]))
+        check_parser(r#"{}"#, value!([]))
     }
 
     #[test]
     fn list_of_numbers() {
         check_parser(
             r#"{1  , 2, 5,4,  3,2,3}"#,
-            val!([1., 2., 5., 4., 3., 2., 3.]),
+            value!([1., 2., 5., 4., 3., 2., 3.]),
         )
     }
     #[test]
     fn list_single_string() {
-        check_parser(r#"{"abc"}"#, val!(["abc"]))
+        check_parser(r#"{"abc"}"#, value!(["abc"]))
     }
 
     #[test]
     fn list_of_string() {
         check_parser(
             r#"{"abc"   , "cd", "e", "f"}"#,
-            val!(["abc", "cd", "e", "f"]),
+            value!(["abc", "cd", "e", "f"]),
         )
     }
     #[test]
     fn list_of_lists() {
-        check_parser(r#"{{}, {}, {}}"#, val!([[], [], []]))
+        check_parser(r#"{{}, {}, {}}"#, value!([[], [], []]))
     }
 
     #[test]
     fn list_hetero() {
         check_parser(
             r#"{{        }, 1       ,     "xyz",       {  1, "bb"} , 2.5 }"#,
-            val!([[], 1., "xyz", [1., "bb"], 2.5]),
+            value!([[], 1., "xyz", [1., "bb"], 2.5]),
         )
     }
 
     #[test]
     fn list_with_trailing_comma() {
-        check_parser(r#"{5,}"#, val!([5.]))
+        check_parser(r#"{5,}"#, value!([5.]))
     }
 
     #[test]
@@ -386,7 +398,7 @@ mod tests {
     fn map_simple() {
         check_parser(
             "{\n   [1] = 2,  [2] = 4,\n}",
-            val!({
+            value!({
                 1. => 2.,
                 2. => 4.
             }),
@@ -397,7 +409,7 @@ mod tests {
     fn map_single_key() {
         check_parser(
             "{[1] = 2}",
-            val!({
+            value!({
                 1. => 2.
             }),
         )
@@ -407,7 +419,7 @@ mod tests {
     fn map_string() {
         check_parser(
             r#"{["1"] = "8",  ["5"] = "2"}"#,
-            val!({
+            value!({
                 "1" => "8",
                 "5" => "2"
             }),
@@ -434,7 +446,7 @@ mod tests {
 
     #[test]
     fn empty_curlies_is_list() {
-        check_parser(r#"{}"#, val!([]))
+        check_parser(r#"{}"#, value!([]))
     }
 
     #[test]
@@ -447,7 +459,7 @@ mod tests {
     fn map_string_vec() {
         check_parser(
             r#"{["1"] = {1, 2},  ["5"] = {5, 6}}"#,
-            val!({
+            value!({
                 "1" => [1., 2.],
                 "5" => [5., 6.]
             }),
@@ -458,7 +470,7 @@ mod tests {
     fn map_nested() {
         check_parser(
             r#"{["1"] = {[1] = 2},  ["5"] = {[3] = 4}}"#,
-            val!({
+            value!({
                 "1" => { 1. => 2. },
                 "5" => { 3. => 4. }
             }),
@@ -469,7 +481,7 @@ mod tests {
     fn map_with_list_keys() {
         check_parser(
             r#"{[{1, 2}] = 1,  [{3, 4}] = {[3] = 4}}"#,
-            val!({
+            value!({
                 [1., 2.] => 1.,
                 [3., 4.] => { 3. => 4. }
             }),
@@ -480,7 +492,7 @@ mod tests {
     fn list_of_map() {
         check_parser(
             r#"{{[1] = 2}, {[3] = 4, [5] = 6}}"#,
-            val!([
+            value!([
                 {1. => 2.},
                 {3. => 4., 5. => 6.}
             ]),
@@ -489,17 +501,17 @@ mod tests {
 
     #[test]
     fn structure() {
-        check_parser(r#"{ x = 5 }"#, val!({"x" => 5.}))
+        check_parser(r#"{ x = 5 }"#, value!({"x" => 5.}))
     }
 
     #[test]
     fn structure_field_numbers() {
-        check_parser(r#"{ x5xe = 5 }"#, val!({"x5xe" => 5.}))
+        check_parser(r#"{ x5xe = 5 }"#, value!({"x5xe" => 5.}))
     }
 
     #[test]
     fn mix_struct_and_map() {
-        check_parser(r#"{ x5xe = 5, [3] = 2 }"#, val!({"x5xe" => 5., 3. => 2. }))
+        check_parser(r#"{ x5xe = 5, [3] = 2 }"#, value!({"x5xe" => 5., 3. => 2. }))
     }
 
     #[test]
@@ -510,7 +522,7 @@ mod tests {
 
     #[test]
     fn reference_number() {
-        check_parser(r#"@0x7fffffffde44: 1"#, val!(1.))
+        check_parser(r#"@0x7fffffffde44: 1"#, value!(1.))
     }
 
     #[test]
