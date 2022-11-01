@@ -12,6 +12,48 @@ pub enum Value {
     List(Vec<Value>),
 }
 
+impl Value {
+    pub fn as_list(&self) -> Option<&[Value]> {
+        if let Self::List(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_string(&self) -> Option<&str> {
+        if let Self::String(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        if let Self::Bool(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_number(&self) -> Option<f64> {
+        if let Self::Number(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_map(&self) -> Option<&[(Value, Value)]> {
+        if let Self::Map(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
 impl<'a> Parser<'a> {
     pub fn new(src: &'a str) -> Self {
         Self { src, pos: 0 }
