@@ -12,7 +12,7 @@ def as_list(expr: gdb.Value) -> list[gdb.Value] | None:
 class GraphViz(gdb.Command):
     """Visualize a graph into a dot file\nUsage: graph-viz EXPR FILE """
     def __init__(self) -> None:
-        super(TableViz, self).__init__("graph-viz", gdb.COMMAND_USER, gdb.COMPLETE_EXPRESSION)
+        super(GraphViz, self).__init__("graph-viz", gdb.COMMAND_USER, gdb.COMPLETE_EXPRESSION)
 
     def invoke(self, argument: str, from_tty: bool) -> None:
         [expr, file] = argument.rsplit(' ', 1)
@@ -63,28 +63,37 @@ tbl_style = """
 </style>
 """
 
-def draw_row(a: list[gdb.Value], f: TextIO):
-    f.write("<tr>")
-    for x in a:
-        f.write(f'<td class="data">{x}</td>')
-    f.write("</tr>")
-
 # draw a table
 # TODO: 3d dp?
 class TableViz(gdb.Command):
-    """Visualize a 1D/2D array into html file\n\nUsage: tab-viz EXPR HI... FILE\n\nExample: tab-viz dp {0,0} /tmp/viz.html"""
-
+    """Visualize a 1D/2D array into html file\nUsage: tab-viz EXPR HI... FILE\n\nExample: tab-viz dp {0,0} """
     def __init__(self) -> None:
         super(TableViz, self).__init__("tab-viz", gdb.COMMAND_USER, gdb.COMPLETE_EXPRESSION)
 
     def invoke(self, argument: str, from_tty: bool) -> None:
-        [expr_text, file] = argument.rsplit(' ', 1)
-        expr = gdb.parse_and_eval(expr_text)
+        [expr_text, *his, file] = argument.split(' ')
+        try:
+            expr = gdb.parse_and_eval(expr_text)
+        except:
+            return
         a = as_list(expr) 
         if not a:
             print("cannot parse array")
             return
         
+        def get_idx(expr: str):
+            try:
+                x = gdb.parse_and_eval(expr)
+                if x.type.code == gdb.TYPE_CODE_INT:
+                    return int(x)
+                elif x.type.code == gdb.TYPE_CODE_ARRAY:
+                    # TODO: handle multi dimesional array
+                    return (int(x[0]), int(x[1]))
+            except:
+                pass
+
+        his = {get_idx(x) for x in his}
+
         with open(file, "w") as f:
             f.write(tbl_style)
             f.write("<table>")
@@ -108,7 +117,7 @@ class TableViz(gdb.Command):
                     f.write(f'<td class="heading">{j}</td>')
                     for i in range(d1):
                         val = str(mat[i][j]) if len(mat[i]) > j else ""
-                        f.write(f'<td class="data">{val}</td>')
+                        f.write(f'<td class="data{" hl" if (i, j) in his else ""}">{val}</td>')
                     f.write("</tr>")
             else:
                 f.write("<tr>")
@@ -116,6 +125,10 @@ class TableViz(gdb.Command):
                     f.write(f'<th class="heading">{i}</th>')
                 f.write("</tr>")
 
-                draw_row(a, f)
+                f.write("<tr>")
+                for (i, x) in enumerate(a):
+                    f.write(f'<td class="data{" hl" if i in his else ""}">{x}</td>')
+                    f.write("</tr>")
+                f.write("</tr>")
             f.write("</table>")
 TableViz()
