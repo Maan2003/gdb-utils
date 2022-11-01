@@ -185,6 +185,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_number(&mut self) -> f64 {
         let start = self.pos;
+        self.eat("-");
         while !self.at_eof() {
             let curr = self.current();
             if curr.is_ascii_digit() || curr == '.' {
@@ -208,7 +209,7 @@ impl<'a> Parser<'a> {
             self.parse_list_or_map()
         } else if self.eat("\"") {
             Value::String(self.parse_string())
-        } else if self.current().is_ascii_digit() {
+        } else if self.current().is_ascii_digit() || self.current() == '-'  {
             Value::Number(self.parse_number())
         } else if self.eat("true") {
             Value::Bool(true)
