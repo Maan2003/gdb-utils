@@ -140,7 +140,6 @@ class TableViz(gdb.Command):
                 f.write("<tr>")
                 for (i, x) in enumerate(a):
                     f.write(f'<td class="data{" hl" if i in his else ""}">{x}</td>')
-                    f.write("</tr>")
                 f.write("</tr>")
             f.write("</table>")
 TableViz()
