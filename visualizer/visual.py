@@ -46,6 +46,7 @@ tbl_style = """
     color: #ccc;
     margin: 0;
     font-family: Input Mono;
+    width: min-content;
   }
   table {
     border-collapse: collapse;
@@ -54,10 +55,6 @@ tbl_style = """
   caption {
     font-size: 1.2em;
     margin-bottom: 5px;
-  }
-
-  .hl {
-    background-color: #77f5;
   }
 
   .heading {
@@ -72,8 +69,28 @@ tbl_style = """
     padding: 10px;
     min-width: 10px;
   }
+  td.data.hl {
+    background-color: var(--color);
+  }
+
+  .labels {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    flex-direction: row;
+  }
+  span.label {
+    min-width: 20px;
+    background-color: var(--color);
+    display: inline-block;
+    box-sizing: border-box;
+    text-align: center;
+  }
 </style>
 """
+
+colors = ["#77f5", "#af75", "#f7f5", "#f775", "#7df5", "#ff75"]
 
 # draw a table
 # TODO: 3d dp?
@@ -104,7 +121,13 @@ class TableViz(gdb.Command):
             except:
                 pass
 
-        his = {get_idx(x) for x in his}
+        curr_colors = {}
+        def getcolor(var):
+            if var not in curr_colors:
+                curr_colors[var] = colors[len(curr_colors)]
+            return curr_colors[var]
+
+        his = {get_idx(x):getcolor(x) for x in his}
 
         with open(file, "w") as f:
             f.write(tbl_style)
@@ -129,7 +152,11 @@ class TableViz(gdb.Command):
                     f.write(f'<td class="heading">{j}</td>')
                     for i in range(d1):
                         val = str(mat[i][j]) if len(mat[i]) > j else ""
-                        f.write(f'<td class="data{" hl" if (i, j) in his else ""}">{val}</td>')
+                        if (i, j) in his:
+                            col = his[(i, j)]
+                            f.write(f'<td class="data hl" style="--color: {col}">{val}</td>')
+                        else:
+                            f.write(f'<td class="data"">{val}</td>')
                     f.write("</tr>")
             else:
                 f.write("<tr>")
@@ -138,8 +165,16 @@ class TableViz(gdb.Command):
                 f.write("</tr>")
 
                 f.write("<tr>")
-                for (i, x) in enumerate(a):
-                    f.write(f'<td class="data{" hl" if i in his else ""}">{x}</td>')
+                for (i, val) in enumerate(a):
+                    if i in his:
+                        col = his[i]
+                        f.write(f'<td class="data hl" style="--color: {col}">{val}</td>')
+                    else:
+                        f.write(f'<td class="data">{val}</td>')
                 f.write("</tr>")
             f.write("</table>")
+            f.write('<div class="labels">');
+            for expr, color in curr_colors.items():
+                f.write(f'<span class="label" style="--color: {color}">{expr}</span>')
+            f.write('</div>');
 TableViz()
