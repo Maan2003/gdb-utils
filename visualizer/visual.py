@@ -26,6 +26,9 @@ class GraphViz(gdb.Command):
             print("cannot parse graph")
             return
         gr = Digraph()
+        gr.attr("node", fontcolor="#cccccc", color="#cccccc", fontname="Input Mono")
+        gr.attr("edge", color="#999999")
+        gr.attr("graph", bgcolor="#191919")
         for u, vs in enumerate(g):
             gr.node(str(u))
             for v in as_list(vs):
@@ -39,6 +42,8 @@ tbl_style = """
 <style>
   html,
   body {
+    background: #191919;
+    color: #ccc;
     margin: 0;
     font-family: Input Mono;
   }
@@ -47,20 +52,23 @@ tbl_style = """
   }
 
   caption {
-    margin-bottom: 10px;
+    font-size: 1.2em;
+    margin-bottom: 5px;
   }
 
   .hl {
-    background-color: cyan;
+    background-color: #77f5;
   }
 
   .heading {
     font-weight: 400;
     padding-right: 5px;
     padding-bottom: 2px;
+    color: #999;
   }
   td.data {
-    border: black 1px solid;
+    text-align: center;
+    border: #aaa 1px solid;
     padding: 10px;
     min-width: 10px;
   }
