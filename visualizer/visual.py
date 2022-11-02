@@ -1,13 +1,17 @@
 from typing import TextIO
 import gdb
 import graphviz
+import math
 from graphviz.graphs import Digraph
 
 def as_list(expr: gdb.Value) -> list[gdb.Value] | None:
     if vz := gdb.default_visualizer(expr):
         if vz.display_hint() == "array":
             return list(map(lambda x: x[1], vz.children()))
-    # TODO: handle C array
+    if expr.type.code == gdb.TYPE_CODE_ARRAY:
+        # sizeof(a) / sizeof(a[0])
+        size = math.floor(expr.type.sizeof / expr.type.target().sizeof)
+        return [expr[i] for i in range(size)]
 
 class GraphViz(gdb.Command):
     """Visualize a graph into a dot file\nUsage: graph-viz EXPR FILE """
