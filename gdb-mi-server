@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -m
+
+socat -d -d PTY,link=$1,ignoreeof,unlink-close=0 TCP-LISTEN:12219,fork,reuseaddr &
+socat -d -d TCP-LISTEN:12220,fork,reuseaddr EXEC:gdb-mi-server-new

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -m 
+
+PTY=$(mktemp --suffix ".pty")
+
+socat PTY,link=$PTY,waitslave - | gdb-json &
+socat - TCP:127.0.0.1:12219 > /dev/null << EOF
+new-ui mi $PTY
+EOF
+
+fg > /dev/null
