@@ -1,0 +1,11 @@
+[package]
+name = "gdb-json"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.68"
+gdbmi = { version = "0.0.2", path = "../gdbmi" }
+serde_json = "1.0.91"

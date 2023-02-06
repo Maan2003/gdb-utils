@@ -1,0 +1,3 @@
+[submodule "gdbmi"]
+	path = gdbmi
+	url = https://github.com/Maan2003/gdbmi
