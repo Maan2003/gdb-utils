@@ -8,6 +8,8 @@ def as_list(expr: gdb.Value) -> list[gdb.Value] | None:
     if vz := gdb.default_visualizer(expr):
         if vz.display_hint() == "array":
             return list(map(lambda x: x[1], vz.children()))
+        if vz.display_hint() == "string":
+            return vz.to_string().value().string()
     if expr.type.code == gdb.TYPE_CODE_ARRAY:
         # sizeof(a) / sizeof(a[0])
         size = math.floor(expr.type.sizeof / expr.type.target().sizeof)
